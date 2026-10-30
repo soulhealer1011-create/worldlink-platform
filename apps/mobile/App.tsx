@@ -28,6 +28,7 @@ export default function App() {
   const [sent, setSent] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
+  const [reservationQuantities, setReservationQuantities] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [tab, setTab] = useState<Tab>("Home");
@@ -170,9 +171,14 @@ export default function App() {
   async function reserve(listing: Listing) {
     if (!supabase) return;
     if (!userEmail) { setMessage("Sign in before requesting food."); setTab("Account"); return; }
+    const quantity = Number(reservationQuantities[listing.id] ?? "1");
+    if (!Number.isFinite(quantity) || quantity <= 0 || quantity > Number(listing.quantity)) {
+      Alert.alert("Check quantity", "Enter a quantity greater than zero and no more than the available amount.");
+      return;
+    }
     setBusy(true); setMessage("");
     try {
-      const { error } = await supabase.rpc("reserve_food_listing", { p_listing_id: listing.id, p_quantity: 1 });
+      const { error } = await supabase.rpc("reserve_food_listing", { p_listing_id: listing.id, p_quantity: quantity });
       if (error) throw error;
       Alert.alert("Request sent", "The donor organisation must confirm your reservation.");
     } catch (error) {
@@ -204,8 +210,10 @@ export default function App() {
             <Text style={s.title}>{item.title}</Text><Text style={s.copy}>{item.food_category} · {item.quantity} {item.quantity_unit}</Text>
             <Text style={s.copy}>{item.city}, {item.country_code} · {item.organization_name}</Text>
             <Text style={s.copy}>Allergens: {item.allergens?.join(", ") || "Not supplied — confirm with donor"}</Text>
-            {!!item.dietary_tags?.length && <Text style={s.copy}>Dietary: {item.dietary_tags.join(", ")}</Text>
-            <Pressable style={s.button} disabled={busy} onPress={() => reserve(item)}><Text style={s.buttonText}>Request 1 {item.quantity_unit}</Text></Pressable>
+            {!!item.dietary_tags?.length && <Text style={s.copy}>Dietary: {item.dietary_tags.join(", ")}</Text>}
+            <Text style={s.label}>Quantity to request</Text>
+            <TextInput keyboardType="decimal-pad" value={reservationQuantities[item.id] ?? "1"} onChangeText={(value) => setReservationQuantities((old) => ({ ...old, [item.id]: value }))} style={s.input} />
+            <Pressable style={s.button} disabled={busy} onPress={() => reserve(item)}><Text style={s.buttonText}>Request {reservationQuantities[item.id] ?? "1"} {item.quantity_unit}</Text></Pressable>
           </View>) : <View style={s.card}><Text style={s.copy}>No active listings yet. Verified donor listings will appear here.</Text></View>}
         </>}
         {tab === "Donate" && <View style={s.card}>
