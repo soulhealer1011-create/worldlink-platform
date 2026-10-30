@@ -71,5 +71,5 @@ Before launch:
 - Source repository: https://github.com/soulhealer1011-create/worldlink-platform
 - Production website: https://worldlink-ujunwaedeh771-4486.vercel.app
 - Supabase project region: London, UK.
-- Vercel currently reports a temporary 100-deployment-per-24-hour limit. The existing production deployment remains live; recent code changes await the next permitted production deployment.
+- Deploy from the main branch through Vercel and verify that the latest production deployment is marked READY before sharing the release.
 - The GitHub repository is currently public. Change its visibility in GitHub settings if the source code should be private.
