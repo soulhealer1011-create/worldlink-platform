@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "../../lib/supabase/client";
 
 export default function RequestHelpPage() {
   const [form, setForm] = useState({
     country: "NG", city: "", household: "1", needs: "", notes: "", share: false
   });
+  const [countries, setCountries] = useState<Array<{ code: string; name: string }>>([]);
+  useEffect(() => { createClient().from("countries").select("code,name").eq("is_enabled", true).order("name").then(({ data }) => setCountries(data ?? [])); }, []);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const set = (key: keyof typeof form, value: string | boolean) => setForm((old) => ({ ...old, [key]: value }));
@@ -46,7 +48,10 @@ export default function RequestHelpPage() {
     <a className="brand" href="/">WORLDLINK</a>
     <section className="hero"><div className="eyebrow">Private community support</div><h1>Request food assistance</h1><p>Your request is private by default. Do not include passwords, bank details or unnecessary sensitive information.</p>
       <form className="tile" onSubmit={submit}>
-        <label>Country code<input required maxLength={2} value={form.country} onChange={(event) => set("country", event.target.value.toUpperCase())} style={fieldStyle}/></label>
+        <label>Country<select required value={form.country} onChange={(event) => set("country", event.target.value)} style={fieldStyle}>
+          {countries.map((country) => <option key={country.code} value={country.code}>{country.name} ({country.code})</option>)}
+          {!countries.length && <option value="NG">Nigeria (NG)</option>}
+        </select></label>
         <label>City<input required value={form.city} onChange={(event) => set("city", event.target.value)} style={fieldStyle}/></label>
         <label>Household size<input required type="number" min="1" max="100" value={form.household} onChange={(event) => set("household", event.target.value)} style={fieldStyle}/></label>
         <label>Food needs (comma-separated)<input value={form.needs} onChange={(event) => set("needs", event.target.value)} placeholder="e.g. rice, vegetables" style={fieldStyle}/></label>
