@@ -20,8 +20,10 @@ type Listing = {
   quantity: number; quantity_unit: string; city: string; country_code: string;
   available_until: string; organization_name: string; allergens: string[] | null; dietary_tags: string[] | null;
 };
-type Tab = "Home" | "Donate" | "Request" | "Account";
+type Tab = "Home" | "Donate" | "Request" | "Manage" | "Account";
 type Country = { code: string; name: string };
+type ManagedReservation = { id: string; quantity: number; status: string; created_at: string; listingTitle: string; unit: string };
+type ManagedCharityRequest = { id: string; city: string; country_code: string; household_size: number; food_needs: string[]; notes: string | null; status: string; created_at: string };
 
 export default function App() {
   const [email, setEmail] = useState("");
@@ -30,6 +32,8 @@ export default function App() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
   const [reservationQuantities, setReservationQuantities] = useState<Record<string, string>>({});
+  const [managedReservations, setManagedReservations] = useState<ManagedReservation[]>([]);
+  const [charityRequests, setCharityRequests] = useState<ManagedCharityRequest[]>([]);
   const [countries, setCountries] = useState<Country[]>([{ code: "NG", name: "Nigeria" }]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -71,7 +75,51 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  useEffect(() => { if (supabase) refreshListings(); }, [userEmail]);
+  async function loadManagedWork() {
+    if (!supabase) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setManagedReservations([]); setCharityRequests([]); return; }
+    const { data: members, error: memberError } = await supabase.from("organization_members")
+      .select("organization_id,role").eq("user_id", user.id).in("role", ["owner", "admin", "manager"]);
+    if (memberError) { setMessage(memberError.message); return; }
+    const ids = (members ?? []).map((row) => row.organization_id);
+    if (!ids.length) { setManagedReservations([]); setCharityRequests([]); return; }
+    const { data: orgs, error: orgError } = await supabase.from("organizations")
+      .select("id,kind,verification_status").in("id", ids);
+    if (orgError) { setMessage(orgError.message); return; }
+    const verified = orgs ?? [];
+    const donorIds = verified.filter((org) => ["business", "community"].includes(org.kind) && org.verification_status === "verified").map((org) => org.id);
+    const charityIds = verified.filter((org) => org.kind === "charity" && org.verification_status === "verified").map((org) => org.id);
+
+    if (donorIds.length) {
+      const { data: listings, error: listingError } = await supabase.from("food_listings")
+        .select("id,title,quantity_unit").in("organization_id", donorIds);
+      if (listingError) { setMessage(listingError.message); return; }
+      const listingMap = new Map((listings ?? []).map((item) => [item.id, item]));
+      const listingIds = Array.from(listingMap.keys());
+      if (listingIds.length) {
+        const { data: reservations, error: reservationError } = await supabase.from("reservations")
+          .select("id,listing_id,quantity,status,created_at").in("listing_id", listingIds)
+          .in("status", ["requested", "accepted"]).order("created_at", { ascending: false }).limit(50);
+        if (reservationError) { setMessage(reservationError.message); return; }
+        setManagedReservations((reservations ?? []).map((item) => {
+          const listing = listingMap.get(item.listing_id);
+          return { ...item, listingTitle: listing?.title ?? "Food listing", unit: listing?.quantity_unit ?? "" };
+        }));
+      } else setManagedReservations([]);
+    } else setManagedReservations([]);
+
+    if (charityIds.length) {
+      const { data: requests, error: requestError } = await supabase.from("assistance_requests")
+        .select("id,city,country_code,household_size,food_needs,notes,status,created_at")
+        .in("target_organization_id", charityIds).eq("status", "matched")
+        .order("created_at", { ascending: false }).limit(50);
+      if (requestError) { setMessage(requestError.message); return; }
+      setCharityRequests((requests ?? []) as ManagedCharityRequest[]);
+    } else setCharityRequests([]);
+  }
+
+  useEffect(() => { if (supabase) { refreshListings(); loadManagedWork(); } }, [userEmail]);
 
   async function sendCode() {
     if (!supabase || !email.trim()) return;
@@ -212,6 +260,42 @@ export default function App() {
     </View>
   );
 
+  async function respondReservation(id: string, decision: "accepted" | "rejected") {
+    if (!supabase || busy) return;
+    setBusy(true);
+    try {
+      const { error } = await supabase.rpc("respond_to_food_reservation", { p_reservation_id: id, p_decision: decision });
+      if (error) throw error;
+      await loadManagedWork();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to update reservation.");
+    } finally { setBusy(false); }
+  }
+
+  async function confirmHandover(id: string) {
+    if (!supabase || busy) return;
+    setBusy(true);
+    try {
+      const { error } = await supabase.rpc("complete_food_handover", { p_reservation_id: id, p_notes: "Collection confirmed in WORLDLINK mobile app" });
+      if (error) throw error;
+      await loadManagedWork();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to confirm collection.");
+    } finally { setBusy(false); }
+  }
+
+  async function updateCharityRequest(id: string, status: "fulfilled" | "closed") {
+    if (!supabase || busy) return;
+    setBusy(true);
+    try {
+      const { error } = await supabase.rpc("update_assistance_request_status", { p_request_id: id, p_status: status });
+      if (error) throw error;
+      await loadManagedWork();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to update assistance request.");
+    } finally { setBusy(false); }
+  }
+
   const field = (label: string, value: string, onChangeText: (text: string) => void, placeholder = "") => (
     <View style={s.field}><Text style={s.label}>{label}</Text><TextInput style={s.input}
       value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor="#819087" /></View>
@@ -221,7 +305,7 @@ export default function App() {
     <SafeAreaView style={s.screen}>
       <View style={s.top}><Text style={s.brand}>WORLDLINK</Text><Text style={s.kicker}>LESS WASTE. MORE COMMUNITY.</Text></View>
       <View style={s.tabs}>
-        {(["Home", "Donate", "Request", "Account"] as Tab[]).map((item) => (
+        {(["Home", "Donate", "Request", "Manage", "Account"] as Tab[]).map((item) => (
           <Pressable key={item} onPress={() => { setTab(item); setMessage(""); }}
             style={[s.tab, tab === item && s.tabActive]}><Text style={[s.tabText, tab === item && s.tabTextActive]}>{item}</Text></Pressable>
         ))}
@@ -270,6 +354,38 @@ export default function App() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}><Switch value={request.share} onValueChange={(value) => setRequest((x) => ({ ...x, share: value }))} /><Text style={s.copy}>I consent to sharing this request with one verified charity assigned to help me.</Text></View>
           <Pressable style={s.button} disabled={busy} onPress={submitRequest}><Text style={s.buttonText}>{busy ? "Submitting…" : "Submit private request"}</Text></Pressable>
         </View>}
+        {tab === "Manage" && <>
+          <Text style={s.heading}>Organisation workspace</Text>
+          <Text style={s.copy}>Manage donor reservations and assistance requests assigned to your verified charity.</Text>
+          <View style={s.card}>
+            <Text style={s.section}>Incoming food reservations</Text>
+            {!managedReservations.length && <Text style={s.copy}>No pending or accepted reservations for your verified donor organisations.</Text>}
+            {managedReservations.map((item) => <View key={item.id} style={s.card}>
+              <Text style={s.title}>{item.listingTitle}</Text>
+              <Text style={s.copy}>{item.quantity} {item.unit} · {item.status}</Text>
+              {item.status === "requested" && <View style={{ flexDirection: "row", gap: 8 }}>
+                <Pressable style={s.button} disabled={busy} onPress={() => respondReservation(item.id, "accepted")}><Text style={s.buttonText}>Accept</Text></Pressable>
+                <Pressable style={s.buttonSecondary} disabled={busy} onPress={() => respondReservation(item.id, "rejected")}><Text style={s.buttonSecondaryText}>Decline</Text></Pressable>
+              </View>}
+              {item.status === "accepted" && <Pressable style={s.button} disabled={busy} onPress={() => confirmHandover(item.id)}><Text style={s.buttonText}>Confirm handover</Text></Pressable>}
+            </View>)}
+          </View>
+          <View style={s.card}>
+            <Text style={s.section}>Assistance requests assigned to your charity</Text>
+            {!charityRequests.length && <Text style={s.copy}>No consented assistance requests are currently assigned to your verified charity.</Text>}
+            {charityRequests.map((item) => <View key={item.id} style={s.card}>
+              <Text style={s.title}>{item.city}, {item.country_code}</Text>
+              <Text style={s.copy}>Household size: {item.household_size}</Text>
+              <Text style={s.copy}>Needs: {item.food_needs?.join(", ") || "Not specified"}</Text>
+              {!!item.notes && <Text style={s.copy}>{item.notes}</Text>}
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <Pressable style={s.button} disabled={busy} onPress={() => updateCharityRequest(item.id, "fulfilled")}><Text style={s.buttonText}>Fulfilled</Text></Pressable>
+                <Pressable style={s.buttonSecondary} disabled={busy} onPress={() => updateCharityRequest(item.id, "closed")}><Text style={s.buttonSecondaryText}>Close</Text></Pressable>
+              </View>
+            </View>)}
+          </View>
+          <Pressable style={s.buttonSecondary} onPress={() => { loadManagedWork(); refreshListings(); }}><Text style={s.buttonSecondaryText}>Refresh workspace</Text></Pressable>
+        </>}
         {tab === "Account" && <>
           <View style={s.card}>
             {userEmail ? <>
@@ -327,6 +443,8 @@ const s = StyleSheet.create({
   input: { borderWidth: 1, borderColor: "#cbd8ce", borderRadius: 8, padding: 11, color: "#17231d", backgroundColor: "#fff" },
   button: { backgroundColor: "#176b45", padding: 13, borderRadius: 8, alignItems: "center", marginTop: 4 },
   buttonText: { color: "white", fontWeight: "700" },
+  buttonSecondary: { backgroundColor: "white", borderWidth: 1, borderColor: "#b8cbbd", padding: 13, borderRadius: 8, alignItems: "center", marginTop: 4 },
+  buttonSecondaryText: { color: "#176b45", fontWeight: "700" },
   link: { color: "#176b45", fontWeight: "700", paddingVertical: 8 },
   notice: { color: "#176b45", backgroundColor: "#e7f3ea", padding: 12, borderRadius: 8, lineHeight: 20 },
   foot: { fontSize: 11, color: "#68766d", marginTop: 12 }
