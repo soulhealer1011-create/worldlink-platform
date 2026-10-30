@@ -64,7 +64,7 @@ Before launch:
 - Obtain legal review for each enabled country.
 - Establish food safety, allergen, temperature-control, traceability, recall, safeguarding and incident-response procedures.
 - Define organisation verification evidence and periodic re-verification.
-- Decide how logistics partners are assigned and insured; GPS dispatch and route optimisation are not yet implemented.
+- Define insurance and service-level rules for logistics partners. Verified partner assignment and handover are implemented; live GPS dispatch and route optimisation are not yet implemented.
 - Decide whether any paid services, fundraising or payouts are needed. Payment processing is not currently enabled.
 
 ## 7. Hosting and source control
