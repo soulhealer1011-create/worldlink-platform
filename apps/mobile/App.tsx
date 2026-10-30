@@ -2,7 +2,7 @@ import "react-native-url-polyfill/auto";
 import React, { useEffect, useState } from "react";
 import {
   SafeAreaView, ScrollView, Text, View, Pressable, TextInput,
-  StyleSheet, ActivityIndicator, Alert
+  StyleSheet, ActivityIndicator, Alert, Switch
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
@@ -37,7 +37,7 @@ export default function App() {
     city: "", pickup: "", description: ""
   });
   const [request, setRequest] = useState({
-    country: "NG", city: "", household: "1", needs: "", notes: ""
+    country: "NG", city: "", household: "1", needs: "", notes: "", share: false
   });
   const [busy, setBusy] = useState(false);
 
@@ -153,11 +153,12 @@ export default function App() {
         requester_id: user.id, country_code: request.country.toUpperCase(), city: request.city.trim(),
         household_size: Number(request.household),
         food_needs: request.needs.split(",").map((item) => item.trim()).filter(Boolean),
-        notes: request.notes.trim()
+        notes: request.notes.trim(), share_with_assigned_charity: request.share,
+        consent_at: request.share ? new Date().toISOString() : null
       });
       if (error) throw error;
       setMessage("Your private assistance request has been submitted.");
-      setRequest({ country: "NG", city: "", household: "1", needs: "", notes: "" });
+      setRequest({ country: "NG", city: "", household: "1", needs: "", notes: "", share: false });
       setTab("Home");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to submit request.");
@@ -224,6 +225,7 @@ export default function App() {
           {field("Household size", request.household, (v) => setRequest((x) => ({ ...x, household: v })))}
           {field("Food needs", request.needs, (v) => setRequest((x) => ({ ...x, needs: v })), "Rice, vegetables…")}
           {field("Additional information", request.notes, (v) => setRequest((x) => ({ ...x, notes: v })))}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}><Switch value={request.share} onValueChange={(value) => setRequest((x) => ({ ...x, share: value }))} /><Text style={s.copy}>I consent to sharing this request with one verified charity assigned to help me.</Text></View>
           <Pressable style={s.button} disabled={busy} onPress={submitRequest}><Text style={s.buttonText}>{busy ? "Submitting…" : "Submit private request"}</Text></Pressable>
         </View>}
         {tab === "Account" && <>
