@@ -1,0 +1,60 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { createClient } from "../../lib/supabase/client";
+
+type Reservation = { id: string; listing_id: string; quantity: number; status: string; created_at: string };
+type Assistance = { id: string; city: string; status: string; created_at: string };
+type Organisation = { organization_id: string; role: string };
+
+export default function AccountDashboard() {
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [requests, setRequests] = useState<Assistance[]>([]);
+  const [organisations, setOrganisations] = useState<Organisation[]>([]);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+
+  async function load() {
+    setMessage("");
+    const supabase = createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) { setMessage("Your session has expired. Please sign in again."); return; }
+    const [r, a, o] = await Promise.all([
+      supabase.from("reservations").select("id,listing_id,quantity,status,created_at").eq("requester_id", user.id).order("created_at", { ascending: false }).limit(50),
+      supabase.from("assistance_requests").select("id,city,status,created_at").eq("requester_id", user.id).order("created_at", { ascending: false }).limit(50),
+      supabase.from("organization_members").select("organization_id,role").eq("user_id", user.id)
+    ]);
+    if (r.error || a.error || o.error) {
+      setMessage(r.error?.message || a.error?.message || o.error?.message || "Unable to load your account.");
+      return;
+    }
+    setReservations((r.data ?? []) as Reservation[]);
+    setRequests((a.data ?? []) as Assistance[]);
+    setOrganisations((o.data ?? []) as Organisation[]);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function cancel(id: string) {
+    setBusy(id); setMessage("");
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.rpc("cancel_food_reservation", { p_reservation_id: id });
+      if (error) throw error;
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to cancel reservation.");
+    } finally { setBusy(null); }
+  }
+
+  return <div className="section">
+    <div className="actions"><a className="btn" href="/organization/new">Register an organisation</a><a className="btn alt" href="/marketplace">Browse food</a><a className="btn alt" href="/request-help">Request assistance</a></div>
+    <h2>Your organisations</h2>
+    {organisations.length ? <div className="grid">{organisations.map((org) => <article className="tile" key={org.organization_id}><h3>{org.organization_id}</h3><p>Your role: {org.role}</p></article>)}</div> : <p className="muted">You have not joined an organisation yet.</p>}
+    <h2>Your food reservations</h2>
+    {reservations.length ? reservations.map((item) => <article className="tile" key={item.id}><div className="eyebrow">{item.status}</div><p>Reservation reference: {item.id}</p><p>{item.quantity} requested · Listing reference: {item.listing_id}</p><p className="muted">{new Date(item.created_at).toLocaleString()}</p>{item.status === "requested" && <button className="btn alt" disabled={busy === item.id} onClick={() => cancel(item.id)}>Cancel request</button>}</article>) : <p className="muted">No food reservations yet.</p>}
+    <h2>Your assistance requests</h2>
+    {requests.length ? requests.map((item) => <article className="tile" key={item.id}><div className="eyebrow">{item.status}</div><p>{item.city}</p><p className="muted">Submitted {new Date(item.created_at).toLocaleString()}</p></article>) : <p className="muted">No assistance requests submitted.</p>}
+    {message && <p role="status" className="muted">{message}</p>}
+  </div>;
+}
