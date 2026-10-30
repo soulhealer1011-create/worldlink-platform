@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { createClient } from "../../lib/supabase/client";
+import { createClient } from "../../../lib/supabase/client";
 export default function NewOrganizationPage(){
  const [form,setForm]=useState({name:"",kind:"business",country:"NG",description:""});
  const [message,setMessage]=useState("");const [busy,setBusy]=useState(false);
