@@ -21,6 +21,7 @@ type Listing = {
   available_until: string; organization_name: string; allergens: string[] | null; dietary_tags: string[] | null;
 };
 type Tab = "Home" | "Donate" | "Request" | "Account";
+type Country = { code: string; name: string };
 
 export default function App() {
   const [email, setEmail] = useState("");
@@ -29,6 +30,7 @@ export default function App() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
   const [reservationQuantities, setReservationQuantities] = useState<Record<string, string>>({});
+  const [countries, setCountries] = useState<Country[]>([{ code: "NG", name: "Nigeria" }]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [tab, setTab] = useState<Tab>("Home");
@@ -57,6 +59,8 @@ export default function App() {
       setLoading(false);
       return;
     }
+    supabase.from("countries").select("code,name").eq("is_enabled", true).order("name")
+      .then(({ data, error }) => { if (!error && data?.length) setCountries(data as Country[]); });
     supabase.auth.getUser()
       .then(({ data }) => setUserEmail(data.user?.email ?? null))
       .finally(() => setLoading(false));
@@ -186,6 +190,28 @@ export default function App() {
     } finally { setBusy(false); }
   }
 
+  const countryChoices = (selected: string, onSelect: (code: string) => void) => (
+    <View style={s.countryChoices}>
+      {countries.map((country) => (
+        <Pressable key={country.code} onPress={() => onSelect(country.code)}
+          style={[s.countryChip, selected === country.code && s.countryChipActive]}>
+          <Text style={[s.countryChipText, selected === country.code && s.countryChipTextActive]}>{country.code}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+
+  const organisationKindChoices = (
+    <View style={s.countryChoices}>
+      {["business", "charity", "logistics", "community", "other"].map((kind) => (
+        <Pressable key={kind} onPress={() => setOrg((old) => ({ ...old, kind }))}
+          style={[s.countryChip, org.kind === kind && s.countryChipActive]}>
+          <Text style={[s.countryChipText, org.kind === kind && s.countryChipTextActive]}>{kind}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+
   const field = (label: string, value: string, onChangeText: (text: string) => void, placeholder = "") => (
     <View style={s.field}><Text style={s.label}>{label}</Text><TextInput style={s.input}
       value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor="#819087" /></View>
@@ -223,7 +249,8 @@ export default function App() {
           {field("Category", donation.category, (v) => setDonation((x) => ({ ...x, category: v })), "Produce, bakery, dairy…")}
           {field("Quantity", donation.quantity, (v) => setDonation((x) => ({ ...x, quantity: v })))}
           {field("Unit", donation.unit, (v) => setDonation((x) => ({ ...x, unit: v })), "kg, packs, portions")}
-          {field("Country code", donation.country, (v) => setDonation((x) => ({ ...x, country: v.toUpperCase() })))}
+          <Text style={s.label}>Country</Text>
+          {countryChoices(donation.country, (country) => setDonation((x) => ({ ...x, country })) )}
           {field("City", donation.city, (v) => setDonation((x) => ({ ...x, city: v })))}
           {field("Private pickup address", donation.pickup, (v) => setDonation((x) => ({ ...x, pickup: v })))}
           {field("Allergens (comma-separated)", donation.allergens, (v) => setDonation((x) => ({ ...x, allergens: v })), "Peanuts, milk, wheat")}
@@ -234,7 +261,8 @@ export default function App() {
         {tab === "Request" && <View style={s.card}>
           <Text style={s.section}>Request food assistance</Text>
           <Text style={s.copy}>Your request is private by default. Share only information needed to coordinate support.</Text>
-          {field("Country code", request.country, (v) => setRequest((x) => ({ ...x, country: v.toUpperCase() })))}
+          <Text style={s.label}>Country</Text>
+          {countryChoices(request.country, (country) => setRequest((x) => ({ ...x, country })) )}
           {field("City", request.city, (v) => setRequest((x) => ({ ...x, city: v })))}
           {field("Household size", request.household, (v) => setRequest((x) => ({ ...x, household: v })))}
           {field("Food needs", request.needs, (v) => setRequest((x) => ({ ...x, needs: v })), "Rice, vegetables…")}
@@ -257,8 +285,10 @@ export default function App() {
           {userEmail && <View style={s.card}>
             <Text style={s.section}>Register an organisation</Text>
             {field("Organisation name", org.name, (v) => setOrg((x) => ({ ...x, name: v })))}
-            {field("Type", org.kind, (v) => setOrg((x) => ({ ...x, kind: v })), "business, charity, logistics, community")}
-            {field("Country code", org.country, (v) => setOrg((x) => ({ ...x, country: v.toUpperCase() })))}
+            <Text style={s.label}>Organisation type</Text>
+            {organisationKindChoices}
+            <Text style={s.label}>Country</Text>
+            {countryChoices(org.country, (country) => setOrg((x) => ({ ...x, country })) )}
             {field("Description", org.description, (v) => setOrg((x) => ({ ...x, description: v })))}
             <Pressable style={s.button} disabled={busy} onPress={registerOrganization}><Text style={s.buttonText}>{busy ? "Submitting…" : "Register organisation"}</Text></Pressable>
             <Text style={s.foot}>New organisations remain pending until reviewed by WORLDLINK administrators.</Text>
@@ -288,6 +318,11 @@ const s = StyleSheet.create({
   card: { backgroundColor: "white", borderRadius: 14, padding: 17, borderWidth: 1, borderColor: "#e1e8e1", gap: 10 },
   title: { fontSize: 18, fontWeight: "700", color: "#176b45" },
   field: { gap: 5 },
+  countryChoices: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 },
+  countryChip: { borderWidth: 1, borderColor: "#cbd8ce", borderRadius: 18, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: "white" },
+  countryChipActive: { backgroundColor: "#176b45", borderColor: "#176b45" },
+  countryChipText: { color: "#35483d", fontSize: 12, fontWeight: "700", textTransform: "capitalize" },
+  countryChipTextActive: { color: "white" },
   label: { fontSize: 13, fontWeight: "700", color: "#35483d" },
   input: { borderWidth: 1, borderColor: "#cbd8ce", borderRadius: 8, padding: 11, color: "#17231d", backgroundColor: "#fff" },
   button: { backgroundColor: "#176b45", padding: 13, borderRadius: 8, alignItems: "center", marginTop: 4 },
