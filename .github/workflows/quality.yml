@@ -2,8 +2,21 @@ name: quality
 on:
   push:
     branches: [main]
+    paths:
+      - "apps/**"
+      - "package.json"
+      - "supabase/migrations/**"
+      - ".github/workflows/**"
   pull_request:
     branches: [main]
+    paths:
+      - "apps/**"
+      - "package.json"
+      - "supabase/migrations/**"
+      - ".github/workflows/**"
+concurrency:
+  group: worldlink-quality-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   web-quality:
     runs-on: ubuntu-latest
