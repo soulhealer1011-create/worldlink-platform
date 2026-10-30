@@ -10,6 +10,8 @@ type Listing = {
   food_category: string;
   quantity: number;
   quantity_unit: string;
+  allergens: string[] | null;
+  dietary_tags: string[] | null;
   city: string;
   country_code: string;
   available_until: string;
@@ -59,6 +61,8 @@ export default function MarketplaceListings({ listings }: { listings: Listing[] 
       <p>{item.description}</p>
       <p><strong>{item.quantity} {item.quantity_unit}</strong> · {item.city}, {item.country_code}</p>
       <p className="muted">Donated by {item.organization_name}</p>
+      {item.allergens?.length ? <p><strong>Allergens:</strong> {item.allergens.join(", ")}</p> : <p className="muted">Allergen information not supplied — confirm with the donor before collection.</p>}
+      {item.dietary_tags?.length ? <p><strong>Dietary:</strong> {item.dietary_tags.join(", ")}</p> : null}
       <p className="muted">Available until {new Date(item.available_until).toLocaleString()}</p>
       <label>Quantity to request
         <input
