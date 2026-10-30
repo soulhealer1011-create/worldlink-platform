@@ -6,7 +6,7 @@ import { createClient } from "../../lib/supabase/client";
 export default function DonatePage() {
   const [form, setForm] = useState({
     title: "", category: "Produce", quantity: "", unit: "kg", country: "NG",
-    city: "", pickupAddress: "", from: "", until: "", description: ""
+    city: "", pickupAddress: "", from: "", until: "", description: "", allergens: "", dietaryTags: ""
   });
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -60,13 +60,15 @@ export default function DonatePage() {
         city: form.city.trim(),
         pickup_address: form.pickupAddress.trim(),
         description: form.description.trim(),
+        allergens: form.allergens.split(",").map((item) => item.trim()).filter(Boolean),
+        dietary_tags: form.dietaryTags.split(",").map((item) => item.trim()).filter(Boolean),
         available_from: availableFrom.toISOString(),
         available_until: availableUntil.toISOString(),
         status: "available"
       });
       if (error) throw error;
       setMessage("Your food donation has been published.");
-      setForm({ title: "", category: "Produce", quantity: "", unit: "kg", country: "NG", city: "", pickupAddress: "", from: "", until: "", description: "" });
+      setForm({ title: "", category: "Produce", quantity: "", unit: "kg", country: "NG", city: "", pickupAddress: "", from: "", until: "", description: "", allergens: "", dietaryTags: "" });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to publish donation.");
     } finally {
@@ -100,7 +102,13 @@ export default function DonatePage() {
       {field("Private pickup address", "pickupAddress")}
       {field("Available from", "from", "datetime-local")}
       {field("Available until", "until", "datetime-local")}
-      <label>Description, allergens and dietary information
+      <label>Allergens (comma-separated)
+        <input value={form.allergens} onChange={(event) => change("allergens", event.target.value)} placeholder="e.g. peanuts, milk, wheat" style={{ display: "block", width: "100%", padding: 11, margin: "6px 0 14px", border: "1px solid #cbd8ce", borderRadius: 8 }} />
+      </label>
+      <label>Dietary tags (comma-separated)
+        <input value={form.dietaryTags} onChange={(event) => change("dietaryTags", event.target.value)} placeholder="e.g. vegetarian, halal, vegan" style={{ display: "block", width: "100%", padding: 11, margin: "6px 0 14px", border: "1px solid #cbd8ce", borderRadius: 8 }} />
+      </label>
+      <label>Description
         <textarea value={form.description} onChange={(event) => change("description", event.target.value)} style={{ display: "block", width: "100%", padding: 11, margin: "6px 0 14px", border: "1px solid #cbd8ce", borderRadius: 8 }} />
       </label>
       <button className="btn" disabled={busy}>{busy ? "Publishing…" : "Publish donation"}</button>
