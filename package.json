@@ -10,7 +10,7 @@
     "build:web": "npm --workspace @worldlink/web run build",
     "dev:mobile": "npm --workspace @worldlink/mobile run start",
     "typecheck:web": "npm --workspace @worldlink/web run typecheck",
-    "typecheck:mobile": "npm --workspace @worldlink/mobile exec tsc --noEmit",
+    "typecheck:mobile": "npm --workspace @worldlink/mobile exec -- tsc --noEmit",
     "export:mobile": "npm --workspace @worldlink/mobile run export:android"
   },
   "engines": {
