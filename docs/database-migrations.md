@@ -10,6 +10,6 @@ The SQL files in supabase/migrations are the canonical migration history for the
 5. Before any CLI push, confirm the local migration list matches the remote migration history. Do not reset or repair the production migration history to work around a mismatch.
 6. Test RLS and grants after each security-related migration, and run the Supabase security advisor.
 
-The production database has 29 recorded migrations at the time of this document. The migration history was reconciled to the repository in the mobile-release PR so future CLI-based deployments do not try to replay the original schema on the live database.
+The production database has 30 recorded migrations at the time of this document. The migration history was reconciled to the repository in the mobile-release PR so future CLI-based deployments do not try to replay the original schema on the live database.
 
 Never put service-role keys or SMTP credentials in migration files or client bundles.
