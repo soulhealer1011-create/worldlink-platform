@@ -1,5 +1,7 @@
 import { createPublicClient } from "../../lib/supabase/public";
 
+export const dynamic = "force-dynamic";
+
 export default async function ImpactPage() {
   const supabase = createPublicClient();
   const { data, error } = await supabase.from("food_marketplace").select("id,quantity,quantity_unit");
