@@ -25,6 +25,7 @@ type Country = { code: string; name: string };
 type ManagedReservation = { id: string; quantity: number; status: string; created_at: string; listingTitle: string; unit: string };
 type ManagedCharityRequest = { id: string; city: string; country_code: string; household_size: number; food_needs: string[]; notes: string | null; status: string; created_at: string };
 type ManagedLogisticsJob = { id: string; reservation_id: string; quantity: number; title: string; unit: string; city: string; country_code: string; pickup_address: string | null; available_from: string; available_until: string };
+type MobileNotification = { id: string; notification_type: string; title: string; body: string; created_at: string; read_at: string | null };
 
 export default function App() {
   const [email, setEmail] = useState("");
@@ -36,6 +37,7 @@ export default function App() {
   const [managedReservations, setManagedReservations] = useState<ManagedReservation[]>([]);
   const [charityRequests, setCharityRequests] = useState<ManagedCharityRequest[]>([]);
   const [logisticsJobs, setLogisticsJobs] = useState<ManagedLogisticsJob[]>([]);
+  const [notifications, setNotifications] = useState<MobileNotification[]>([]);
   const [countries, setCountries] = useState<Country[]>([{ code: "NG", name: "Nigeria" }]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -154,7 +156,26 @@ export default function App() {
     } else setLogisticsJobs([]);
   }
 
-  useEffect(() => { if (supabase) { refreshListings(); loadManagedWork(); } }, [userEmail]);
+  async function loadNotifications() {
+    if (!supabase) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setNotifications([]); return; }
+    const { data, error } = await supabase.from("user_notifications")
+      .select("id,notification_type,title,body,created_at,read_at")
+      .eq("user_id", user.id).order("created_at", { ascending: false }).limit(20);
+    if (error) { setMessage(error.message); return; }
+    setNotifications((data ?? []) as MobileNotification[]);
+  }
+
+  async function markNotificationRead(id: string) {
+    if (!supabase) return;
+    const readAt = new Date().toISOString();
+    const { error } = await supabase.from("user_notifications").update({ read_at: readAt }).eq("id", id);
+    if (error) { setMessage(error.message); return; }
+    setNotifications((items) => items.map((item) => item.id === id ? { ...item, read_at: readAt } : item));
+  }
+
+  useEffect(() => { if (supabase) { refreshListings(); loadManagedWork(); loadNotifications(); } }, [userEmail]);
 
   async function sendCode() {
     if (!supabase || !email.trim()) return;
@@ -176,6 +197,7 @@ export default function App() {
   async function signOut() {
     if (supabase) await supabase.auth.signOut();
     setUserEmail(null);
+    setNotifications([]);
     setTab("Home");
   }
 
@@ -451,6 +473,15 @@ export default function App() {
           <View style={s.card}>
             {userEmail ? <>
               <Text style={s.title}>Signed in</Text><Text style={s.copy}>{userEmail}</Text>
+              <Text style={s.section}>Notifications</Text>
+              {!notifications.length && <Text style={s.copy}>No notifications yet. Reservation, organisation and collection updates will appear here.</Text>}
+              {notifications.map((item) => <View key={item.id} style={s.card}>
+                <Text style={s.label}>{item.read_at ? "Read" : "New"} · {item.notification_type.replace(/_/g, " ")}</Text>
+                <Text style={s.title}>{item.title}</Text>
+                <Text style={s.copy}>{item.body}</Text>
+                <Text style={s.foot}>{new Date(item.created_at).toLocaleString()}</Text>
+                {!item.read_at && <Pressable style={s.buttonSecondary} onPress={() => markNotificationRead(item.id)}><Text style={s.buttonSecondaryText}>Mark as read</Text></Pressable>}
+              </View>)}
               <Pressable onPress={signOut}><Text style={s.link}>Sign out</Text></Pressable>
             </> : <>
               <Text style={s.title}>Sign in with email</Text>
