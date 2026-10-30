@@ -36,6 +36,10 @@ jobs:
         with:
           node-version: 22
       - run: npm install
+      - name: Report dependency advisories
+        run: |
+          npm audit --json > audit.json || true
+          node -e "const a=require('./audit.json'); for (const [name,v] of Object.entries(a.vulnerabilities || {})) console.log(name + ': ' + v.severity + '; fix=' + JSON.stringify(v.fixAvailable))"
       - run: npm run typecheck:mobile
       - run: npm run export:mobile
       - run: npm --workspace @worldlink/mobile run export:ios
