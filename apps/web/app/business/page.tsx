@@ -1,3 +1,5 @@
+import BusinessReservations from "./reservations";
+
 export default function BusinessPortal() {
   return <main className="shell">
     <nav className="nav"><a className="brand" href="/">WORLDLINK</a><a href="/marketplace">Marketplace</a><a href="/donate">Donate food</a><a href="/account">Account</a></nav>
@@ -7,6 +9,7 @@ export default function BusinessPortal() {
       <article className="tile"><h2>2. Publish</h2><p>Once verified, list food category, quantity, allergens, collection window and city. Do not publish private pickup details publicly.</p></article>
       <article className="tile"><h2>3. Coordinate</h2><p>Review incoming requests and arrange collection with an eligible charity or community partner.</p></article>
     </section>
+    <BusinessReservations />
     <p className="muted">Verification is required before listings appear in the public marketplace. Food donors remain responsible for food safety, traceability and local legal compliance.</p>
   </main>;
 }
