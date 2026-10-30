@@ -95,7 +95,8 @@ export default function App() {
       const { data: listings, error: listingError } = await supabase.from("food_listings")
         .select("id,title,quantity_unit").in("organization_id", donorIds);
       if (listingError) { setMessage(listingError.message); return; }
-      const listingMap = new Map((listings ?? []).map((item) => [item.id, item]));
+      const listingMap = new Map<string, { id: string; title: string; quantity_unit: string }>();
+      for (const item of listings ?? []) listingMap.set(item.id, item);
       const listingIds = Array.from(listingMap.keys());
       if (listingIds.length) {
         const { data: reservations, error: reservationError } = await supabase.from("reservations")
