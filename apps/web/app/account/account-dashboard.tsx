@@ -63,6 +63,18 @@ export default function AccountDashboard() {
     } finally { setBusy(null); }
   }
 
+  async function withdrawConsent(id: string) {
+    setBusy(id); setMessage("");
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.rpc("withdraw_assistance_sharing_consent", { p_request_id: id });
+      if (error) throw error;
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to withdraw sharing consent.");
+    } finally { setBusy(null); }
+  }
+
   async function confirmCollection(id: string) {
     setBusy(id); setMessage("");
     try {
@@ -90,7 +102,7 @@ export default function AccountDashboard() {
     <h2>Your food reservations</h2>
     {reservations.length ? reservations.map((item) => <article className="tile" key={item.id}><div className="eyebrow">{item.status}</div><p>Reservation reference: {item.id}</p><p>{item.quantity} requested · Listing reference: {item.listing_id}</p><p className="muted">{new Date(item.created_at).toLocaleString()}</p>{item.status === "requested" && <button className="btn alt" disabled={busy === item.id} onClick={() => cancel(item.id)}>Cancel request</button>}{item.status === "accepted" && <button className="btn" disabled={busy === item.id} onClick={() => confirmCollection(item.id)}>Confirm I collected this food</button>}</article>) : <p className="muted">No food reservations yet.</p>}
     <h2>Your assistance requests</h2>
-    {requests.length ? requests.map((item) => <article className="tile" key={item.id}><div className="eyebrow">{item.status}</div><p>{item.city}, {item.country_code} · Household size {item.household_size}</p><p>Food needs: {item.food_needs?.join(", ") || "Not specified"}</p>{item.notes && <p>{item.notes}</p>}<p className="muted">{item.share_with_assigned_charity ? "Consent given for charity sharing" : "Private request"} · Submitted {new Date(item.created_at).toLocaleString()}</p></article>) : <p className="muted">No assistance requests submitted.</p>}
+    {requests.length ? requests.map((item) => <article className="tile" key={item.id}><div className="eyebrow">{item.status}</div><p>{item.city}, {item.country_code} · Household size {item.household_size}</p><p>Food needs: {item.food_needs?.join(", ") || "Not specified"}</p>{item.notes && <p>{item.notes}</p>}<p className="muted">{item.share_with_assigned_charity ? "Consent given for charity sharing" : "Private request"} · Submitted {new Date(item.created_at).toLocaleString()}</p>{item.share_with_assigned_charity && <button className="btn alt" disabled={busy === item.id} onClick={() => withdrawConsent(item.id)}>Withdraw sharing consent</button>}</article>) : <p className="muted">No assistance requests submitted.</p>}
     {message && <p role="status" className="muted">{message}</p>}
   </div>;
 }
