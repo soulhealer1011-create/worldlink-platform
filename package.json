@@ -1,12 +1,19 @@
 {
   "name": "worldlink-platform",
   "private": true,
-  "workspaces": ["apps/web", "apps/mobile"],
+  "workspaces": [
+    "apps/web",
+    "apps/mobile"
+  ],
   "scripts": {
     "dev:web": "npm --workspace @worldlink/web run dev",
     "build:web": "npm --workspace @worldlink/web run build",
     "dev:mobile": "npm --workspace @worldlink/mobile run start",
-    "typecheck:web": "npm --workspace @worldlink/web run typecheck"
+    "typecheck:web": "npm --workspace @worldlink/web run typecheck",
+    "typecheck:mobile": "npm --workspace @worldlink/mobile exec tsc --noEmit",
+    "export:mobile": "npm --workspace @worldlink/mobile run export:android"
   },
-  "engines": { "node": ">=22.13.0" }
+  "engines": {
+    "node": ">=22.13.0"
+  }
 }
