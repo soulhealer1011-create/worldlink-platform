@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "../../lib/supabase/client";
 
 export default function DonatePage() {
@@ -8,6 +8,8 @@ export default function DonatePage() {
     title: "", category: "Produce", quantity: "", unit: "kg", country: "NG",
     city: "", pickupAddress: "", from: "", until: "", description: "", allergens: "", dietaryTags: ""
   });
+  const [countries, setCountries] = useState<Array<{ code: string; name: string }>>([]);
+  useEffect(() => { createClient().from("countries").select("code,name").eq("is_enabled", true).order("name").then(({ data }) => setCountries(data ?? [])); }, []);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -97,7 +99,12 @@ export default function DonatePage() {
       </label>
       {field("Quantity", "quantity", "number")}
       {field("Unit (kg, packs, portions)", "unit")}
-      {field("Country code", "country")}
+      <label>Country
+        <select required value={form.country} onChange={(event) => change("country", event.target.value)} style={{ display: "block", width: "100%", padding: 11, margin: "6px 0 14px", border: "1px solid #cbd8ce", borderRadius: 8 }}>
+          {countries.map((country) => <option key={country.code} value={country.code}>{country.name} ({country.code})</option>)}
+          {!countries.length && <option value="NG">Nigeria (NG)</option>}
+        </select>
+      </label>
       {field("City", "city")}
       {field("Private pickup address", "pickupAddress")}
       {field("Available from", "from", "datetime-local")}
