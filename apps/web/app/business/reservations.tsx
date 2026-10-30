@@ -48,6 +48,20 @@ export default function BusinessReservations() {
 
   useEffect(() => { load(); }, []);
 
+  async function completeHandover(id: string) {
+    setBusy(id); setMessage("");
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.rpc("complete_food_handover", {
+        p_reservation_id: id, p_notes: "Collection confirmed by donor organisation"
+      });
+      if (error) throw error;
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to confirm handover.");
+    } finally { setBusy(null); }
+  }
+
   async function decide(id: string, decision: "accepted" | "rejected") {
     setBusy(id); setMessage("");
     try {
@@ -72,6 +86,7 @@ export default function BusinessReservations() {
       <div className="eyebrow">{item.status}</div>
       <h3>{item.listing.title}</h3>
       <p>{item.quantity} {item.listing.quantity_unit} requested · {new Date(item.created_at).toLocaleString()}</p>
+      {item.status === "accepted" && <button className="btn" disabled={busy === item.id} onClick={() => completeHandover(item.id)}>Confirm collection and handover</button>}
       {item.status === "requested" && <div className="actions">
         <button className="btn" disabled={busy === item.id} onClick={() => decide(item.id, "accepted")}>Accept request</button>
         <button className="btn alt" disabled={busy === item.id} onClick={() => decide(item.id, "rejected")}>Decline</button>
