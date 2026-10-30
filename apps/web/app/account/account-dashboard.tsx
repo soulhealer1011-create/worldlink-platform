@@ -81,7 +81,7 @@ export default function AccountDashboard() {
     <div className="actions"><a className="btn" href="/organization/new">Register an organisation</a><a className="btn alt" href="/marketplace">Browse food</a><a className="btn alt" href="/request-help">Request assistance</a></div>
     <h2>Notifications</h2>
     {notifications.length ? notifications.map((item) => <article className="tile" key={item.id}>
-      <div className="eyebrow">{item.read_at ? "Read" : "New"} · {item.notification_type.replaceAll("_", " ")}</div>
+      <div className="eyebrow">{item.read_at ? "Read" : "New"} · {item.notification_type.replace(/_/g, " ")}</div>
       <h3>{item.title}</h3><p>{item.body}</p><p className="muted">{new Date(item.created_at).toLocaleString()}</p>
       {!item.read_at && <button className="btn alt" onClick={() => markRead(item.id)}>Mark as read</button>}
     </article>) : <p className="muted">You have no notifications yet.</p>}
