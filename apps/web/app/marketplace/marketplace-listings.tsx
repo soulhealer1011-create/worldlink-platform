@@ -22,6 +22,17 @@ export default function MarketplaceListings({ listings }: { listings: Listing[] 
   const [quantities, setQuantities] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [messages, setMessages] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("all");
+  const [country, setCountry] = useState("all");
+  const categories = Array.from(new Set(listings.map((item) => item.food_category))).sort();
+  const countries = Array.from(new Set(listings.map((item) => item.country_code))).sort();
+  const filteredListings = listings.filter((item) => {
+    const text = [item.title, item.description ?? "", item.city, item.organization_name, item.food_category].join(" ").toLowerCase();
+    return text.includes(search.trim().toLowerCase())
+      && (category === "all" || item.food_category === category)
+      && (country === "all" || item.country_code === country);
+  });
 
   async function reserve(listing: Listing) {
     const quantity = Number(quantities[listing.id] || "1");
