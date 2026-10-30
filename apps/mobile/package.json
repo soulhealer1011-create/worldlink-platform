@@ -7,7 +7,8 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "export:android": "expo export --platform android"
+    "export:android": "expo export --platform android",
+    "export:ios": "expo export --platform ios"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.57.4",
