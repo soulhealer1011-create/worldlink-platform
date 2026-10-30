@@ -7,7 +7,7 @@ export default function NewOrganizationPage(){
  async function submit(e:React.FormEvent){e.preventDefault();setBusy(true);setMessage("");
   try{const supabase=createClient();const {data:{user}}=await supabase.auth.getUser();if(!user){setMessage("Sign in before registering an organisation.");return;}
    const {error}=await supabase.from("organizations").insert({name:form.name,kind:form.kind,country_code:form.country,description:form.description,created_by:user.id});
-   if(error)throw error;setMessage("Organisation submitted. It is pending verification. You can now continue to the donation workspace.");
+   if(error)throw error;setMessage("Organisation registered. You are its owner. An administrator must verify it before you can publish food listings.");
   }catch(err){setMessage(err instanceof Error?err.message:"Unable to create organisation.");}finally{setBusy(false);}
  }
  const set=(key:keyof typeof form,value:string)=>setForm(v=>({...v,[key]:value}));
