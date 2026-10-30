@@ -1,0 +1,12 @@
+{
+  "name": "worldlink-platform",
+  "private": true,
+  "workspaces": ["apps/web", "apps/mobile"],
+  "scripts": {
+    "dev:web": "npm --workspace @worldlink/web run dev",
+    "build:web": "npm --workspace @worldlink/web run build",
+    "dev:mobile": "npm --workspace @worldlink/mobile run start",
+    "typecheck:web": "npm --workspace @worldlink/web run typecheck"
+  },
+  "engines": { "node": ">=22.13.0" }
+}
