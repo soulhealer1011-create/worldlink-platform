@@ -38,3 +38,4 @@ jobs:
       - run: npm install
       - run: npm run typecheck:mobile
       - run: npm run export:mobile
+      - run: npm --workspace @worldlink/mobile run export:ios
