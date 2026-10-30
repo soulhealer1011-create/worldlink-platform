@@ -4,8 +4,8 @@
 
 In Supabase Dashboard → Authentication → URL Configuration:
 
-- Set Site URL to the deployed WORLDLINK website origin (the production alias configured in Vercel).
-- Add the exact callback URL: `https://worldlink-ujunwaedeh771-4486.vercel.app/auth/callback`.
+- Set Site URL to the `https://worldlink-flame.vercel.app` (the verified Vercel production domain).
+- Add the exact callback URL: `https://worldlink-flame.vercel.app/auth/callback`.
 - Add local development callback URL `http://localhost:3000/auth/callback` if local web development is required.
 
 ## Magic Link email template

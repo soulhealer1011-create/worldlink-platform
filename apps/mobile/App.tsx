@@ -24,6 +24,9 @@ type Tab = "Home" | "Donate" | "Request" | "Manage" | "Account";
 type Country = { code: string; name: string };
 type ManagedReservation = { id: string; quantity: number; status: string; created_at: string; listingTitle: string; unit: string };
 type ManagedCharityRequest = { id: string; city: string; country_code: string; household_size: number; food_needs: string[]; notes: string | null; status: string; created_at: string };
+type ManagedLogisticsJob = { id: string; reservation_id: string; quantity: number; title: string; unit: string; city: string; country_code: string; pickup_address: string | null; available_from: string; available_until: string };
+type MobileNotification = { id: string; notification_type: string; title: string; body: string; created_at: string; read_at: string | null };
+type MyAssistanceRequest = { id: string; city: string; country_code: string; household_size: number; food_needs: string[]; share_with_assigned_charity: boolean; status: string; created_at: string };
 
 export default function App() {
   const [email, setEmail] = useState("");
@@ -34,6 +37,9 @@ export default function App() {
   const [reservationQuantities, setReservationQuantities] = useState<Record<string, string>>({});
   const [managedReservations, setManagedReservations] = useState<ManagedReservation[]>([]);
   const [charityRequests, setCharityRequests] = useState<ManagedCharityRequest[]>([]);
+  const [logisticsJobs, setLogisticsJobs] = useState<ManagedLogisticsJob[]>([]);
+  const [notifications, setNotifications] = useState<MobileNotification[]>([]);
+  const [myRequests, setMyRequests] = useState<MyAssistanceRequest[]>([]);
   const [countries, setCountries] = useState<Country[]>([{ code: "NG", name: "Nigeria" }]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -78,12 +84,12 @@ export default function App() {
   async function loadManagedWork() {
     if (!supabase) return;
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setManagedReservations([]); setCharityRequests([]); return; }
+    if (!user) { setManagedReservations([]); setCharityRequests([]); setLogisticsJobs([]); return; }
     const { data: members, error: memberError } = await supabase.from("organization_members")
       .select("organization_id,role").eq("user_id", user.id).in("role", ["owner", "admin", "manager"]);
     if (memberError) { setMessage(memberError.message); return; }
     const ids = (members ?? []).map((row) => row.organization_id);
-    if (!ids.length) { setManagedReservations([]); setCharityRequests([]); return; }
+    if (!ids.length) { setManagedReservations([]); setCharityRequests([]); setLogisticsJobs([]); return; }
     const { data: orgs, error: orgError } = await supabase.from("organizations")
       .select("id,kind,verification_status").in("id", ids);
     if (orgError) { setMessage(orgError.message); return; }
@@ -118,9 +124,85 @@ export default function App() {
       if (requestError) { setMessage(requestError.message); return; }
       setCharityRequests((requests ?? []) as ManagedCharityRequest[]);
     } else setCharityRequests([]);
+
+    const logisticsIds = verified.filter((org) => org.kind === "logistics" && org.verification_status === "verified").map((org) => org.id);
+    if (logisticsIds.length) {
+      const { data: assignments, error: assignmentError } = await supabase.from("reservation_logistics_assignments")
+        .select("id,reservation_id,logistics_organization_id,status,assigned_at")
+        .in("logistics_organization_id", logisticsIds).eq("status", "assigned");
+      if (assignmentError) { setMessage(assignmentError.message); return; }
+      const reservationIds = (assignments ?? []).map((item) => item.reservation_id);
+      if (reservationIds.length) {
+        const { data: reservations, error: reservationError } = await supabase.from("reservations")
+          .select("id,listing_id,quantity").in("id", reservationIds);
+        if (reservationError) { setMessage(reservationError.message); return; }
+        const listingIds = (reservations ?? []).map((item) => item.listing_id);
+        const { data: pickupListings, error: pickupError } = await supabase.from("food_listings")
+          .select("id,title,quantity_unit,city,country_code,pickup_address,available_from,available_until")
+          .in("id", listingIds);
+        if (pickupError) { setMessage(pickupError.message); return; }
+        const reservationMap = new Map<string, { id: string; listing_id: string; quantity: number }>();
+        for (const item of reservations ?? []) reservationMap.set(item.id, item);
+        const pickupMap = new Map<string, { id: string; title: string; quantity_unit: string; city: string; country_code: string; pickup_address: string | null; available_from: string; available_until: string }>();
+        for (const item of pickupListings ?? []) pickupMap.set(item.id, item);
+        setLogisticsJobs((assignments ?? []).flatMap((assignment) => {
+          const reservation = reservationMap.get(assignment.reservation_id);
+          const listing = reservation ? pickupMap.get(reservation.listing_id) : undefined;
+          return reservation && listing ? [{
+            id: assignment.id, reservation_id: assignment.reservation_id, quantity: reservation.quantity,
+            title: listing.title, unit: listing.quantity_unit, city: listing.city, country_code: listing.country_code,
+            pickup_address: listing.pickup_address, available_from: listing.available_from, available_until: listing.available_until
+          }] : [];
+        }));
+      } else setLogisticsJobs([]);
+    } else setLogisticsJobs([]);
   }
 
-  useEffect(() => { if (supabase) { refreshListings(); loadManagedWork(); } }, [userEmail]);
+  async function loadNotifications() {
+    if (!supabase) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setNotifications([]); return; }
+    const { data, error } = await supabase.from("user_notifications")
+      .select("id,notification_type,title,body,created_at,read_at")
+      .eq("user_id", user.id).order("created_at", { ascending: false }).limit(20);
+    if (error) { setMessage(error.message); return; }
+    setNotifications((data ?? []) as MobileNotification[]);
+  }
+
+  async function loadMyRequests() {
+    if (!supabase) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setMyRequests([]); return; }
+    const { data, error } = await supabase.from("assistance_requests")
+      .select("id,city,country_code,household_size,food_needs,share_with_assigned_charity,status,created_at")
+      .eq("requester_id", user.id).order("created_at", { ascending: false }).limit(20);
+    if (error) { setMessage(error.message); return; }
+    setMyRequests((data ?? []) as MyAssistanceRequest[]);
+  }
+
+  async function withdrawConsent(id: string) {
+    if (!supabase || busy) return;
+    setBusy(true); setMessage("");
+    try {
+      const { error } = await supabase.rpc("withdraw_assistance_sharing_consent", { p_request_id: id });
+      if (error) throw error;
+      await loadMyRequests();
+      await loadNotifications();
+      setMessage("Sharing consent withdrawn. Your request is private again.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to withdraw sharing consent.");
+    } finally { setBusy(false); }
+  }
+
+  async function markNotificationRead(id: string) {
+    if (!supabase) return;
+    const readAt = new Date().toISOString();
+    const { error } = await supabase.from("user_notifications").update({ read_at: readAt }).eq("id", id);
+    if (error) { setMessage(error.message); return; }
+    setNotifications((items) => items.map((item) => item.id === id ? { ...item, read_at: readAt } : item));
+  }
+
+  useEffect(() => { if (supabase) { refreshListings(); loadManagedWork(); loadNotifications(); loadMyRequests(); } }, [userEmail]);
 
   async function sendCode() {
     if (!supabase || !email.trim()) return;
@@ -142,6 +224,8 @@ export default function App() {
   async function signOut() {
     if (supabase) await supabase.auth.signOut();
     setUserEmail(null);
+    setNotifications([]);
+    setMyRequests([]);
     setTab("Home");
   }
 
@@ -297,6 +381,21 @@ export default function App() {
     } finally { setBusy(false); }
   }
 
+  async function completeLogisticsJob(id: string) {
+    if (!supabase || busy) return;
+    setBusy(true);
+    try {
+      const { error } = await supabase.rpc("complete_logistics_handover", {
+        p_reservation_id: id,
+        p_notes: "Collection and handover completed in WORLDLINK mobile app"
+      });
+      if (error) throw error;
+      await loadManagedWork();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to complete logistics handover.");
+    } finally { setBusy(false); }
+  }
+
   const field = (label: string, value: string, onChangeText: (text: string) => void, placeholder = "") => (
     <View style={s.field}><Text style={s.label}>{label}</Text><TextInput style={s.input}
       value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor="#819087" /></View>
@@ -354,6 +453,15 @@ export default function App() {
           {field("Additional information", request.notes, (v) => setRequest((x) => ({ ...x, notes: v })))}
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}><Switch value={request.share} onValueChange={(value) => setRequest((x) => ({ ...x, share: value }))} /><Text style={s.copy}>I consent to sharing this request with one verified charity assigned to help me.</Text></View>
           <Pressable style={s.button} disabled={busy} onPress={submitRequest}><Text style={s.buttonText}>{busy ? "Submitting…" : "Submit private request"}</Text></Pressable>
+          <Text style={s.section}>Your assistance requests</Text>
+          {!myRequests.length && <Text style={s.copy}>Your submitted requests will appear here.</Text>}
+          {myRequests.map((item) => <View key={item.id} style={s.card}>
+            <Text style={s.title}>{item.city}, {item.country_code}</Text>
+            <Text style={s.copy}>Household: {item.household_size} · {item.status}</Text>
+            <Text style={s.copy}>Needs: {item.food_needs?.join(", ") || "Not specified"}</Text>
+            <Text style={s.foot}>{item.share_with_assigned_charity ? "Shared with assigned charity by consent" : "Private request"} · {new Date(item.created_at).toLocaleString()}</Text>
+            {item.share_with_assigned_charity && <Pressable style={s.buttonSecondary} disabled={busy} onPress={() => withdrawConsent(item.id)}><Text style={s.buttonSecondaryText}>Withdraw sharing consent</Text></Pressable>}
+          </View>)}
         </View>}
         {tab === "Manage" && <>
           <Text style={s.heading}>Organisation workspace</Text>
@@ -385,12 +493,32 @@ export default function App() {
               </View>
             </View>)}
           </View>
+          <View style={s.card}>
+            <Text style={s.section}>Logistics collection assignments</Text>
+            {!logisticsJobs.length && <Text style={s.copy}>No collection jobs are assigned to your verified logistics organisations.</Text>}
+            {logisticsJobs.map((job) => <View key={job.id} style={s.card}>
+              <Text style={s.title}>{job.title}</Text>
+              <Text style={s.copy}>{job.quantity} {job.unit} · {job.city}, {job.country_code}</Text>
+              <Text style={s.copy}>Pickup: {job.pickup_address || "Confirm pickup point with donor"}</Text>
+              <Text style={s.copy}>Window: {new Date(job.available_from).toLocaleString()} – {new Date(job.available_until).toLocaleString()}</Text>
+              <Pressable style={s.button} disabled={busy} onPress={() => completeLogisticsJob(job.reservation_id)}><Text style={s.buttonText}>Confirm collection and handover</Text></Pressable>
+            </View>)}
+          </View>
           <Pressable style={s.buttonSecondary} onPress={() => { loadManagedWork(); refreshListings(); }}><Text style={s.buttonSecondaryText}>Refresh workspace</Text></Pressable>
         </>}
         {tab === "Account" && <>
           <View style={s.card}>
             {userEmail ? <>
               <Text style={s.title}>Signed in</Text><Text style={s.copy}>{userEmail}</Text>
+              <Text style={s.section}>Notifications</Text>
+              {!notifications.length && <Text style={s.copy}>No notifications yet. Reservation, organisation and collection updates will appear here.</Text>}
+              {notifications.map((item) => <View key={item.id} style={s.card}>
+                <Text style={s.label}>{item.read_at ? "Read" : "New"} · {item.notification_type.replace(/_/g, " ")}</Text>
+                <Text style={s.title}>{item.title}</Text>
+                <Text style={s.copy}>{item.body}</Text>
+                <Text style={s.foot}>{new Date(item.created_at).toLocaleString()}</Text>
+                {!item.read_at && <Pressable style={s.buttonSecondary} onPress={() => markNotificationRead(item.id)}><Text style={s.buttonSecondaryText}>Mark as read</Text></Pressable>}
+              </View>)}
               <Pressable onPress={signOut}><Text style={s.link}>Sign out</Text></Pressable>
             </> : <>
               <Text style={s.title}>Sign in with email</Text>

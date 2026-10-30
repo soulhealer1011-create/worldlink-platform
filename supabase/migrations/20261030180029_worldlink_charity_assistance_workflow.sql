@@ -1,7 +1,12 @@
 create or replace function private.update_assistance_request_status(p_request_id uuid, p_status text)
-returns text language plpgsql security definer set search_path = ''
+returns text
+language plpgsql
+security definer
+set search_path = ''
 as $$
-declare v_org_id uuid; v_status text;
+declare
+  v_org_id uuid;
+  v_status text;
 begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
   if p_status not in ('fulfilled', 'closed') then raise exception 'Status must be fulfilled or closed'; end if;

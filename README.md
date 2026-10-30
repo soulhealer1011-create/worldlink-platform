@@ -1,6 +1,6 @@
 # WORLDLINK
 
-International food-rescue and food-access platform connecting food donors, charities, people requesting assistance, and logistics partners.
+International food-rescue and food-access platform connecting food donors, charities, people requesting assistance, and logistics partners. Production website: https://worldlink-flame.vercel.app.
 
 ## Monorepo
 - `apps/web`: Next.js website.
@@ -19,8 +19,9 @@ Dedicated Supabase project: `znghtualrhwphvrwckpy` (London region).
 - Public marketplace uses a security-invoker view and least-privilege column grants. Anonymous users can see only active listings from verified organisations; donor pickup addresses remain inaccessible.
 - Donation forms capture structured allergen and dietary tags, shown to recipients before they request food. Missing allergen declarations are explicitly flagged for confirmation.
 - Web country selectors load only enabled countries from the shared catalogue. Currency and locale metadata are stored for international expansion; payments and live FX conversion are not yet enabled.
-- Reservation requests use atomic inventory checks. Donors can accept or decline requests, and the donor or recipient can confirm completed collection through an audited handover record. Organisation verification and beneficiary request assignment are administrator-only. Assistance requests are shared with a charity only after explicit consent.
-- Supabase security advisor currently reports no security findings. Remaining performance notices are unused-index information on a pre-launch database with no operational traffic.
+- Reservation requests use atomic inventory checks. Donors can accept or decline requests, and the donor, recipient or assigned logistics partner can confirm completed collection through an audited handover record. Organisation verification and beneficiary request assignment are administrator-only. Assistance requests are shared with a charity only after explicit consent; requesters can withdraw that consent later, which removes the charity assignment and restores private access.
+- Private in-app notifications are generated for reservation, organisation verification, charity assignment, logistics assignment and handover events. Users can read only their own notifications and can only update the read timestamp.
+- Supabase security advisor currently reports no findings. The performance advisor's remaining notices are unused-index information on a pre-launch database with no operational traffic. Anonymous users cannot query profiles, assistance requests, reservations or raw food listings; they can read only the safe marketplace and aggregate public impact views.
 
 ## Getting started
 1. Install Node.js 22.13+ and npm.
@@ -35,7 +36,7 @@ Dedicated Supabase project: `znghtualrhwphvrwckpy` (London region).
 - `/donate` donor listing form
 - `/request-help` private assistance request with explicit sharing consent
 - `/organization/new` organisation registration
-- `/business`, `/charities`, `/logistics`, `/impact` portals
+- `/business`, `/charities`, `/logistics`, `/impact` portals. The impact dashboard reports active listings and completed handovers from privacy-safe aggregate data.
 - `/login`, `/account` authentication and private account workspace
 - `/admin` restricted organisation verification and consent-based assistance assignment
 - `/privacy`, `/terms` draft policies requiring legal completion before launch
@@ -48,7 +49,7 @@ Vercel project root: `apps/web`. Node.js: 22.x. Required environment variables:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (Supabase publishable key)
 
-Configure Supabase Auth's Site URL and allowed redirect URLs to include the deployed website origin and `/auth/callback`.
+Configure Supabase Auth's Site URL as `https://worldlink-flame.vercel.app` and allow `https://worldlink-flame.vercel.app/auth/callback`. See [email and auth setup](supabase/admin/auth-setup.md) for the magic-link template and custom SMTP steps.
 
 ## Mobile
 Use Expo SDK 58 / React Native. Configure the two `EXPO_PUBLIC_*` variables in the mobile environment. EAS build profiles are in `apps/mobile/eas.json`; native builds and store submissions still require the owner's Expo, Apple Developer and Google Play Console credentials.

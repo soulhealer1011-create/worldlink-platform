@@ -39,8 +39,11 @@ set search_path = ''
 as $$
 begin
   if not private.is_platform_admin() then raise exception 'Platform administrator access required'; end if;
-  if p_status not in ('verified', 'rejected', 'suspended', 'pending') then raise exception 'Invalid verification status'; end if;
-  update public.organizations set verification_status = p_status, updated_at = now()
+  if p_status not in ('verified', 'rejected', 'suspended', 'pending') then
+    raise exception 'Invalid verification status';
+  end if;
+  update public.organizations
+  set verification_status = p_status, updated_at = now()
   where id = p_organization_id;
   if not found then raise exception 'Organisation not found'; end if;
   insert into public.audit_events(actor_id, organization_id, event_type, entity_type, entity_id, metadata)
@@ -65,10 +68,14 @@ begin
   if not v_request.share_with_assigned_charity then
     raise exception 'The requester has not consented to share this request with an assigned charity';
   end if;
-  if not exists (select 1 from public.organizations o where o.id = p_organization_id and o.kind = 'charity' and o.verification_status = 'verified') then
+  if not exists (
+    select 1 from public.organizations o
+    where o.id = p_organization_id and o.kind = 'charity' and o.verification_status = 'verified'
+  ) then
     raise exception 'Choose a verified charity organisation';
   end if;
-  update public.assistance_requests set target_organization_id = p_organization_id, status = 'matched', updated_at = now()
+  update public.assistance_requests
+  set target_organization_id = p_organization_id, status = 'matched', updated_at = now()
   where id = p_request_id;
   insert into public.audit_events(actor_id, organization_id, event_type, entity_type, entity_id, metadata)
   values (auth.uid(), p_organization_id, 'assistance_request_assigned', 'assistance_request', p_request_id,
@@ -81,13 +88,24 @@ grant execute on function private.verify_organization(uuid, text) to authenticat
 grant execute on function private.assign_assistance_request(uuid, uuid) to authenticated;
 
 create or replace function public.is_platform_admin()
-returns boolean language sql security invoker set search_path = ''
+returns boolean
+language sql
+security invoker
+set search_path = ''
 as $$ select private.is_platform_admin(); $$;
+
 create or replace function public.verify_organization(p_organization_id uuid, p_status text)
-returns text language sql security invoker set search_path = ''
+returns text
+language sql
+security invoker
+set search_path = ''
 as $$ select private.verify_organization(p_organization_id, p_status); $$;
+
 create or replace function public.assign_assistance_request(p_request_id uuid, p_organization_id uuid)
-returns uuid language sql security invoker set search_path = ''
+returns uuid
+language sql
+security invoker
+set search_path = ''
 as $$ select private.assign_assistance_request(p_request_id, p_organization_id); $$;
 
 revoke all on function public.is_platform_admin() from public, anon;

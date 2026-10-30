@@ -64,12 +64,12 @@ Before launch:
 - Obtain legal review for each enabled country.
 - Establish food safety, allergen, temperature-control, traceability, recall, safeguarding and incident-response procedures.
 - Define organisation verification evidence and periodic re-verification.
-- Decide how logistics partners are assigned and insured; GPS dispatch and route optimisation are not yet implemented.
+- Define insurance and service-level rules for logistics partners. Verified partner assignment and handover are implemented; live GPS dispatch and route optimisation are not yet implemented.
 - Decide whether any paid services, fundraising or payouts are needed. Payment processing is not currently enabled.
 
 ## 7. Hosting and source control
 - Source repository: https://github.com/soulhealer1011-create/worldlink-platform
 - Production website: https://worldlink-ujunwaedeh771-4486.vercel.app
 - Supabase project region: London, UK.
-- Vercel currently reports a temporary 100-deployment-per-24-hour limit. The existing production deployment remains live; recent code changes await the next permitted production deployment.
+- Deploy from the main branch through Vercel and verify that the latest production deployment is marked READY before sharing the release.
 - The GitHub repository is currently public. Change its visibility in GitHub settings if the source code should be private.
