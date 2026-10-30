@@ -18,7 +18,7 @@ const supabase = supabaseUrl && supabaseKey
 type Listing = {
   id: string; title: string; description: string | null; food_category: string;
   quantity: number; quantity_unit: string; city: string; country_code: string;
-  available_until: string; organization_name: string;
+  available_until: string; organization_name: string; allergens: string[] | null; dietary_tags: string[] | null;
 };
 type Tab = "Home" | "Donate" | "Request" | "Account";
 
@@ -34,7 +34,7 @@ export default function App() {
   const [org, setOrg] = useState({ name: "", kind: "charity", country: "NG", description: "" });
   const [donation, setDonation] = useState({
     title: "", category: "Produce", quantity: "1", unit: "kg", country: "NG",
-    city: "", pickup: "", description: ""
+    city: "", pickup: "", description: "", allergens: "", dietaryTags: ""
   });
   const [request, setRequest] = useState({
     country: "NG", city: "", household: "1", needs: "", notes: "", share: false
@@ -44,7 +44,7 @@ export default function App() {
   async function refreshListings() {
     if (!supabase) return;
     const { data, error } = await supabase.from("food_marketplace")
-      .select("id,title,description,food_category,quantity,quantity_unit,city,country_code,available_until,organization_name")
+      .select("id,title,description,food_category,quantity,quantity_unit,city,country_code,available_until,organization_name,allergens,dietary_tags")
       .order("available_until", { ascending: true }).limit(30);
     if (error) setMessage(error.message);
     else setListings((data ?? []) as Listing[]);
@@ -132,11 +132,13 @@ export default function App() {
         quantity: Number(donation.quantity), quantity_unit: donation.unit.trim(),
         country_code: donation.country.toUpperCase(), city: donation.city.trim(),
         pickup_address: donation.pickup.trim(), description: donation.description.trim(),
+        allergens: donation.allergens.split(",").map((item) => item.trim()).filter(Boolean),
+        dietary_tags: donation.dietaryTags.split(",").map((item) => item.trim()).filter(Boolean),
         available_from: now.toISOString(), available_until: until.toISOString(), status: "available"
       });
       if (error) throw error;
       setMessage("Donation published. It is visible in the marketplace.");
-      setDonation({ title: "", category: "Produce", quantity: "1", unit: "kg", country: "NG", city: "", pickup: "", description: "" });
+      setDonation({ title: "", category: "Produce", quantity: "1", unit: "kg", country: "NG", city: "", pickup: "", description: "", allergens: "", dietaryTags: "" });
       await refreshListings(); setTab("Home");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to publish donation.");
@@ -201,6 +203,8 @@ export default function App() {
           {listings.length ? listings.map((item) => <View key={item.id} style={s.card}>
             <Text style={s.title}>{item.title}</Text><Text style={s.copy}>{item.food_category} · {item.quantity} {item.quantity_unit}</Text>
             <Text style={s.copy}>{item.city}, {item.country_code} · {item.organization_name}</Text>
+            <Text style={s.copy}>Allergens: {item.allergens?.join(", ") || "Not supplied — confirm with donor"}</Text>
+            {!!item.dietary_tags?.length && <Text style={s.copy}>Dietary: {item.dietary_tags.join(", ")}</Text>
             <Pressable style={s.button} disabled={busy} onPress={() => reserve(item)}><Text style={s.buttonText}>Request 1 {item.quantity_unit}</Text></Pressable>
           </View>) : <View style={s.card}><Text style={s.copy}>No active listings yet. Verified donor listings will appear here.</Text></View>}
         </>}
@@ -214,7 +218,9 @@ export default function App() {
           {field("Country code", donation.country, (v) => setDonation((x) => ({ ...x, country: v.toUpperCase() })))}
           {field("City", donation.city, (v) => setDonation((x) => ({ ...x, city: v })))}
           {field("Private pickup address", donation.pickup, (v) => setDonation((x) => ({ ...x, pickup: v })))}
-          {field("Description and allergens", donation.description, (v) => setDonation((x) => ({ ...x, description: v })))}
+          {field("Allergens (comma-separated)", donation.allergens, (v) => setDonation((x) => ({ ...x, allergens: v })), "Peanuts, milk, wheat")}
+          {field("Dietary tags (comma-separated)", donation.dietaryTags, (v) => setDonation((x) => ({ ...x, dietaryTags: v })), "Vegetarian, halal, vegan")}
+          {field("Description", donation.description, (v) => setDonation((x) => ({ ...x, description: v })))}
           <Pressable style={s.button} disabled={busy} onPress={publishDonation}><Text style={s.buttonText}>{busy ? "Publishing…" : "Publish donation"}</Text></Pressable>
         </View>}
         {tab === "Request" && <View style={s.card}>
