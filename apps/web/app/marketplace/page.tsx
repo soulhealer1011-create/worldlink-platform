@@ -1,6 +1,8 @@
 import { createPublicClient } from "../../lib/supabase/public";
 import MarketplaceListings from "./marketplace-listings";
 
+export const dynamic = "force-dynamic";
+
 export default async function MarketplacePage() {
   const supabase = createPublicClient();
   const { data: listings, error } = await supabase
