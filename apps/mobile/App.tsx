@@ -16,7 +16,7 @@ export default function App(){
   const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>setUserEmail(session?.user.email??null));
   return()=>subscription.unsubscribe();
  },[]);
- useEffect(()=>{if(!supabase||!userEmail&&false)return;
+ useEffect(()=>{if(!supabase)return;
   supabase.from("food_listings").select("id,title,description,food_category,quantity,quantity_unit,city,country_code,available_until").eq("status","available").gt("available_until",new Date().toISOString()).order("available_until",{ascending:true}).limit(30).then(({data,error})=>{if(error)setMessage(error.message);else setListings((data??[]) as Listing[]);});
  },[userEmail]);
  async function sendCode(){if(!supabase)return;setMessage("");const {error}=await supabase.auth.signInWithOtp({email,options:{shouldCreateUser:true}});if(error){setMessage(error.message);return;}setSent(true);setMessage("A sign-in code has been sent to your email.");}
