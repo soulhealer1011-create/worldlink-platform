@@ -17,7 +17,7 @@ Dedicated Supabase project: `znghtualrhwphvrwckpy` (London region).
 - Client applications use the Supabase publishable key only. Never place service-role keys in web or mobile bundles.
 - Country reference catalogue: 248 ISO country/territory records with currency and default-locale metadata. The initial operational rollout enables 12 countries: Nigeria, UK, US, Canada, Ghana, Kenya, South Africa, India, Australia, Germany, France and UAE. Other countries remain disabled pending local compliance and operational review.
 - Public marketplace reads a restricted view that omits donor pickup addresses. Only verified organisations' active listings are exposed.
-- Reservation requests use atomic inventory checks. Organisation verification and beneficiary request assignment are administrator-only. Assistance requests are shared with a charity only after explicit consent.
+- Reservation requests use atomic inventory checks. Donors can accept or decline requests, and the donor or recipient can confirm completed collection through an audited handover record. Organisation verification and beneficiary request assignment are administrator-only. Assistance requests are shared with a charity only after explicit consent.
 - Supabase security advisor currently reports no security findings. Remaining performance notices are unused-index information on a pre-launch database with no operational traffic.
 
 ## Getting started
