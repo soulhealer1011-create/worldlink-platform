@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "WORLDLINK",
+    "slug": "worldlink",
+    "scheme": "worldlink",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": { "supportsTablet": true, "bundleIdentifier": "org.worldlink.app" },
+    "android": { "package": "org.worldlink.app" }
+  }
+}
