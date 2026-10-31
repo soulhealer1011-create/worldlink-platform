@@ -2,7 +2,7 @@ import "react-native-url-polyfill/auto";
 import React, { useEffect, useState } from "react";
 import {
   SafeAreaView, ScrollView, Text, View, Pressable, TextInput,
-  StyleSheet, ActivityIndicator, Alert, Switch
+  StyleSheet, ActivityIndicator, Alert, Switch, Linking
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
@@ -11,7 +11,7 @@ const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey, {
-      auth: { storage: AsyncStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false }
+      auth: { storage: AsyncStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false, flowType: "pkce" }
     })
   : null;
 
@@ -29,6 +29,9 @@ export default function App() {
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [sent, setSent] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [phoneOtp, setPhoneOtp] = useState("");
+  const [phoneSent, setPhoneSent] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
   const [reservationQuantities, setReservationQuantities] = useState<Record<string, string>>({});
@@ -73,6 +76,25 @@ export default function App() {
       setUserEmail(session?.user.email ?? null);
     });
     return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const handleAuthUrl = async (url: string) => {
+      try {
+        const parsed = new URL(url);
+        const code = parsed.searchParams.get("code");
+        if (code && supabase) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) setMessage(error.message);
+          else setMessage("Google sign-in successful.");
+        }
+      } catch {
+        setMessage("Unable to complete the sign-in redirect. Please try again.");
+      }
+    };
+    const subscription = Linking.addEventListener("url", ({ url }) => { void handleAuthUrl(url); });
+    Linking.getInitialURL().then((url) => { if (url) void handleAuthUrl(url); });
+    return () => subscription.remove();
   }, []);
 
   async function loadManagedWork() {
@@ -137,6 +159,48 @@ export default function App() {
     if (error) { setMessage(error.message); return; }
     setUserEmail(data.user?.email ?? email);
     setMessage("You are signed in.");
+  }
+
+  async function sendPhoneCode() {
+    if (!supabase || busy || !phone.trim()) return;
+    setBusy(true); setMessage("");
+    try {
+      const { error } = await supabase.auth.signInWithOtp({ phone: phone.trim(), options: { shouldCreateUser: true } });
+      if (error) throw error;
+      setPhoneSent(true);
+      setMessage("SMS code requested. Enter the code sent to your phone.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to send SMS code.");
+    } finally { setBusy(false); }
+  }
+
+  async function verifyPhoneCode() {
+    if (!supabase || busy) return;
+    setBusy(true); setMessage("");
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({ phone: phone.trim(), token: phoneOtp.trim(), type: "sms" });
+      if (error) throw error;
+      setUserEmail(data.user?.email ?? data.user?.phone ?? phone);
+      setMessage("Phone number verified. You are signed in.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Phone verification failed.");
+    } finally { setBusy(false); }
+  }
+
+  async function signInWithGoogle() {
+    if (!supabase || busy) return;
+    setBusy(true); setMessage("");
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: "worldlink://auth/callback", skipBrowserRedirect: true }
+      });
+      if (error) throw error;
+      if (!data.url) throw new Error("Google sign-in did not return an authorization URL.");
+      await Linking.openURL(data.url);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to start Google sign-in.");
+    } finally { setBusy(false); }
   }
 
   async function signOut() {
@@ -393,10 +457,17 @@ export default function App() {
               <Text style={s.title}>Signed in</Text><Text style={s.copy}>{userEmail}</Text>
               <Pressable onPress={signOut}><Text style={s.link}>Sign out</Text></Pressable>
             </> : <>
-              <Text style={s.title}>Sign in with email</Text>
+              <Text style={s.title}>Sign in to WORLDLINK</Text>
+              <Pressable style={s.button} disabled={busy} onPress={signInWithGoogle}><Text style={s.buttonText}>Continue with Google</Text></Pressable>
+              <Text style={s.label}>Email sign-in</Text>
               {field("Email address", email, setEmail, "name@example.com")}
               {sent && field("Email code", otp, setOtp, "6-digit code")}
-              <Pressable style={s.button} onPress={sent ? verifyCode : sendCode}><Text style={s.buttonText}>{sent ? "Verify code" : "Send sign-in code"}</Text></Pressable>
+              <Pressable style={s.button} disabled={busy} onPress={sent ? verifyCode : sendCode}><Text style={s.buttonText}>{sent ? "Verify email code" : "Send email code"}</Text></Pressable>
+              <Text style={s.label}>Phone sign-in (include country code)</Text>
+              {field("Phone number", phone, setPhone, "+2348012345678")}
+              {phoneSent && field("SMS verification code", phoneOtp, setPhoneOtp, "6-digit code")}
+              <Pressable style={s.button} disabled={busy} onPress={phoneSent ? verifyPhoneCode : sendPhoneCode}><Text style={s.buttonText}>{phoneSent ? "Verify phone number" : "Send SMS code"}</Text></Pressable>
+              <Text style={s.foot}>Google OAuth and SMS require provider credentials and redirect URLs to be configured in Supabase Auth.</Text>
             </>}
           </View>
           {userEmail && <View style={s.card}>
