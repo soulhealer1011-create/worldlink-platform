@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "../../lib/supabase/client";
 export default function LoginPage() {
  const [email,setEmail]=useState(""); const [message,setMessage]=useState(""); const [busy,setBusy]=useState(false);
+ useEffect(() => { if (new URLSearchParams(window.location.search).get("error") === "confirmation") setMessage("This confirmation link is invalid, expired, or already used. Request a fresh email and open the newest link."); }, []);
  async function submit(e:React.FormEvent) {
   e.preventDefault(); setBusy(true); setMessage("");
   try {
