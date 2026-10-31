@@ -163,7 +163,7 @@ export default function App() {
   async function sendPhoneCode() {
     if (!supabase || busy) return;
     const normalized = phone.trim();
-    if (!/^\\+[1-9]\\d{7,14}$/.test(normalized)) {
+    if (!/^\+[1-9]\d{7,14}$/.test(normalized)) {
       setMessage("Enter your phone in international format, e.g. +2348012345678.");
       return;
     }
