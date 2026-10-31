@@ -32,3 +32,31 @@ After saving the template:
 ## Production email delivery
 
 Supabase's default sender is rate-limited and intended for testing. For reliable Gmail delivery at production volume, configure a verified sending domain and custom SMTP provider in Supabase Auth settings. Add SPF, DKIM and DMARC records as instructed by the provider. Keep SMTP credentials only in Supabase Auth settings; never put them in the app, Vercel client variables, or GitHub.
+
+## Google sign-in — required provider credentials
+
+The web and Expo clients now request Google OAuth through Supabase. To enable the provider:
+
+1. In Google Cloud Console, create an OAuth 2.0 Client ID with application type **Web application**.
+2. Add this exact Authorized redirect URI in Google Cloud:
+   `https://znghtualrhwphvrwckpy.supabase.co/auth/v1/callback`
+3. In Supabase Dashboard → Authentication → Sign In / Providers → Google, enable Google and enter the Google Client ID and Client Secret. Save them in Supabase only; do not put the client secret in Vercel or either app.
+4. In Authentication → URL Configuration, allow these app return URLs:
+   - `https://worldlink-platform.vercel.app/auth/callback`
+   - `worldlink://auth/callback`
+5. In Google OAuth consent screen, configure the app name, support email, developer contact, and publish/verify the consent screen as appropriate for the audience.
+
+Google sign-in cannot complete until the real Google Client ID and Client Secret have been entered in Supabase. The mobile app uses the `worldlink://` deep-link scheme declared in `apps/mobile/app.json`.
+
+## Phone-number sign-in — required SMS provider
+
+The web and Expo clients now support SMS OTP requests and verification. Supabase requires phone sign-up to be enabled and a supported SMS provider configured:
+
+1. Open Supabase Dashboard → Authentication → Sign In / Providers → Phone.
+2. Enable phone sign-ups.
+3. Configure a supported SMS provider (for example Twilio, Vonage, or MessageBird) with its account credentials and sender/service identifier.
+4. Keep all SMS credentials in Supabase Auth settings; never add them to browser/mobile code or public environment variables.
+5. Set reasonable OTP expiry and send-rate limits, and test delivery to Nigerian (+234) and other intended country numbers. SMS costs and country coverage depend on the provider and your account.
+
+The UI expects phone numbers in E.164 format, e.g. `+2348012345678`. Phone sign-in will return a provider/configuration error until the SMS provider is configured and the target country is enabled by that provider.
+
