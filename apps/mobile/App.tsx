@@ -1,7 +1,7 @@
 import "react-native-url-polyfill/auto";
 import React, { useEffect, useState } from "react";
 import {
-  SafeAreaView, ScrollView, Text, View, Pressable, TextInput,
+  SafeAreaView, ScrollView, Text, View, Pressable, TextInput, Linking,
   StyleSheet, ActivityIndicator, Alert, Switch
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -29,6 +29,9 @@ export default function App() {
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [sent, setSent] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [phoneOtp, setPhoneOtp] = useState("");
+  const [phoneSent, setPhoneSent] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
   const [reservationQuantities, setReservationQuantities] = useState<Record<string, string>>({});
@@ -73,6 +76,24 @@ export default function App() {
       setUserEmail(session?.user.email ?? null);
     });
     return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return;
+    const handleAuthUrl = async (url: string) => {
+      try {
+        const parsed = new URL(url);
+        const code = parsed.searchParams.get("code");
+        if (!code) return;
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) setMessage(error.message);
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "Unable to complete Google sign-in.");
+      }
+    };
+    const subscription = Linking.addEventListener("url", ({ url }) => { void handleAuthUrl(url); });
+    void Linking.getInitialURL().then((url) => { if (url) void handleAuthUrl(url); });
+    return () => subscription.remove();
   }, []);
 
   async function loadManagedWork() {
@@ -137,6 +158,53 @@ export default function App() {
     if (error) { setMessage(error.message); return; }
     setUserEmail(data.user?.email ?? email);
     setMessage("You are signed in.");
+  }
+
+  async function sendPhoneCode() {
+    if (!supabase || busy) return;
+    const normalized = phone.trim();
+    if (!/^\\+[1-9]\\d{7,14}$/.test(normalized)) {
+      setMessage("Enter your phone in international format, e.g. +2348012345678.");
+      return;
+    }
+    setBusy(true); setMessage("");
+    try {
+      const { error } = await supabase.auth.signInWithOtp({ phone: normalized, options: { shouldCreateUser: true } });
+      if (error) throw error;
+      setPhoneSent(true);
+      setMessage("SMS code requested. Check your messages.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to send SMS code.");
+    } finally { setBusy(false); }
+  }
+
+  async function verifyPhoneCode() {
+    if (!supabase || busy) return;
+    setBusy(true); setMessage("");
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({ phone: phone.trim(), token: phoneOtp.trim(), type: "sms" });
+      if (error) throw error;
+      setUserEmail(data.user?.email ?? data.user?.phone ?? phone.trim());
+      setMessage("You are signed in.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to verify SMS code.");
+    } finally { setBusy(false); }
+  }
+
+  async function googleSignIn() {
+    if (!supabase || busy) return;
+    setBusy(true); setMessage("");
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: "worldlink://auth/callback", skipBrowserRedirect: true }
+      });
+      if (error) throw error;
+      if (!data.url) throw new Error("Google sign-in URL was not returned.");
+      await Linking.openURL(data.url);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to start Google sign-in.");
+    } finally { setBusy(false); }
   }
 
   async function signOut() {
@@ -393,10 +461,16 @@ export default function App() {
               <Text style={s.title}>Signed in</Text><Text style={s.copy}>{userEmail}</Text>
               <Pressable onPress={signOut}><Text style={s.link}>Sign out</Text></Pressable>
             </> : <>
-              <Text style={s.title}>Sign in with email</Text>
+              <Text style={s.title}>Sign in to WORLDLINK</Text>
+              <Pressable style={s.button} disabled={busy} onPress={googleSignIn}><Text style={s.buttonText}>Continue with Google</Text></Pressable>
+              <Text style={s.section}>Email sign-in</Text>
               {field("Email address", email, setEmail, "name@example.com")}
               {sent && field("Email code", otp, setOtp, "6-digit code")}
-              <Pressable style={s.button} onPress={sent ? verifyCode : sendCode}><Text style={s.buttonText}>{sent ? "Verify code" : "Send sign-in code"}</Text></Pressable>
+              <Pressable style={s.button} disabled={busy} onPress={sent ? verifyCode : sendCode}><Text style={s.buttonText}>{sent ? "Verify email code" : "Send email code"}</Text></Pressable>
+              <Text style={s.section}>Phone sign-in</Text>
+              {field("Phone number with country code", phone, setPhone, "+2348012345678")}
+              {phoneSent && field("SMS verification code", phoneOtp, setPhoneOtp, "6-digit code")}
+              <Pressable style={s.button} disabled={busy} onPress={phoneSent ? verifyPhoneCode : sendPhoneCode}><Text style={s.buttonText}>{phoneSent ? "Verify SMS code" : "Send SMS code"}</Text></Pressable>
             </>}
           </View>
           {userEmail && <View style={s.card}>
