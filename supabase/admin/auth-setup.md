@@ -25,3 +25,33 @@ Paste this into Authentication → Email Templates → Magic Link. Test both the
 ## Production email
 
 The built-in email sender is suitable only for limited testing. Configure a verified sending domain and custom SMTP provider before public launch. Keep SMTP credentials in Supabase Auth settings; never put them in the app or GitHub repository.
+
+## Google sign-in (web and mobile)
+
+In Supabase Dashboard → Authentication → Sign In / Providers → Google:
+
+1. Enable Google.
+2. Create a Google OAuth client in Google Cloud Console.
+3. Add the Supabase Auth callback URI shown in the Supabase provider settings to the Google OAuth client's Authorized redirect URIs.
+4. Save the Google client ID and client secret in the Supabase provider configuration only. Do not commit either value.
+5. In Authentication → URL Configuration, add the production and local web callbacks above, plus the mobile deep link `worldlink://auth/callback`.
+6. Confirm the OAuth consent screen is published or that every tester is listed as an allowed test user.
+
+The mobile app uses the `worldlink://` URL scheme declared in `apps/mobile/app.json`. Rebuild the native app after changing its scheme or native configuration.
+
+## Phone-number sign-in (web and mobile)
+
+In Supabase Dashboard → Authentication → Sign In / Providers → Phone:
+
+1. Enable phone authentication.
+2. Configure a supported SMS provider (for example Twilio, Vonage, or MessageBird) with its credentials in Supabase Dashboard.
+3. Configure an approved sender and international SMS delivery. Test Nigerian numbers in E.164 format (for example `+234...`) and at least one number in each intended launch country.
+4. Set sensible OTP expiry and SMS rate limits. Do not expose provider credentials in client apps.
+
+The apps expect phone numbers in E.164 format and verify the SMS OTP with Supabase Auth. SMS provider fees and country-specific delivery restrictions apply.
+
+## Email confirmation troubleshooting
+
+The web callback now accepts both PKCE `code` callbacks and Supabase `token_hash` verification links. Keep the redirect URLs allow-listed and use the callback route as the email redirect destination.
+
+The hosted project's default email sender is heavily rate-limited and may reject messages to addresses outside the Supabase organisation. Configure custom SMTP with a verified sending domain before inviting public users. If a link is opened on another device or expires, request a fresh link; never reuse a consumed confirmation link.
