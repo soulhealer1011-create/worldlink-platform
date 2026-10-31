@@ -84,8 +84,8 @@ export default function LoginPage() {
       <div className="tile" style={{display:"grid",gap:14}}>
         <button className="btn" type="button" onClick={googleSignIn} disabled={busy}>Continue with Google</button>
         <div style={{display:"flex",gap:8}}>
-          <button type="button" className={method === "email" ? "btn" : "btn btn-secondary"} onClick={() => {setMethod("email");setMessage("");}}>Email</button>
-          <button type="button" className={method === "phone" ? "btn" : "btn btn-secondary"} onClick={() => {setMethod("phone");setMessage("");}}>Phone</button>
+          <button type="button" className={method === "email" ? "btn" : "btn alt"} onClick={() => {setMethod("email");setMessage("");}}>Email</button>
+          <button type="button" className={method === "phone" ? "btn" : "btn alt"} onClick={() => {setMethod("phone");setMessage("");}}>Phone</button>
         </div>
         {method === "email" ? <form onSubmit={sendEmail}>
           <label>Email address<br/><input required type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} style={{width:"100%",padding:12,margin:"10px 0 18px",border:"1px solid #cbd8ce",borderRadius:8}}/></label>
