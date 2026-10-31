@@ -20,7 +20,7 @@ Dedicated Supabase project: `znghtualrhwphvrwckpy` (London region).
 - Donation forms capture structured allergen and dietary tags, shown to recipients before they request food. Missing allergen declarations are explicitly flagged for confirmation.
 - Web country selectors load only enabled countries from the shared catalogue. Currency and locale metadata are stored for international expansion; payments and live FX conversion are not yet enabled.
 - Reservation requests use atomic inventory checks. Donors can accept or decline requests, and the donor or recipient can confirm completed collection through an audited handover record. Organisation verification and beneficiary request assignment are administrator-only. Assistance requests are shared with a charity only after explicit consent.
-- Supabase security advisor currently reports no security findings. Remaining performance notices are unused-index information on a pre-launch database with no operational traffic.
+- Current Supabase security review flags leaked-password protection as disabled; enable it in Supabase Auth password-security settings before public launch. Performance review also reports unused-index notices on the pre-launch database; review them after real workload data exists rather than removing indexes prematurely.
 
 ## Getting started
 1. Install Node.js 22.13+ and npm.
