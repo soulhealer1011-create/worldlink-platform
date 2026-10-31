@@ -8,7 +8,8 @@ export default function LoginPage() {
   e.preventDefault(); setBusy(true); setMessage("");
   try {
    const supabase=createClient();
-   const {error}=await supabase.auth.signInWithOtp({email,options:{emailRedirectTo:window.location.origin+"/auth/callback"}});
+   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://worldlink-platform.vercel.app";
+   const {error}=await supabase.auth.signInWithOtp({email,options:{emailRedirectTo:siteUrl+"/auth/callback"}});
    if(error) throw error;
    setMessage("Check your email for a secure sign-in link. If it does not arrive, check spam and your Supabase email settings.");
   } catch(err) { setMessage(err instanceof Error?err.message:"Unable to start sign-in."); }
