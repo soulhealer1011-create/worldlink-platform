@@ -5,6 +5,7 @@
 In Supabase Dashboard → Authentication → URL Configuration:
 
 - Set Site URL to the production WORLDLINK origin: `https://worldlink-platform.vercel.app`.
+- In Vercel → Project → Settings → Environment Variables, set `NEXT_PUBLIC_SITE_URL` to `https://worldlink-platform.vercel.app` for Production, Preview, and Development. For local-only testing, override it in `.env.local` with `http://localhost:3000`.
 - Add `https://worldlink-platform.vercel.app/auth/confirm` to Redirect URLs.
 - Keep `https://worldlink-platform.vercel.app/auth/callback` allow-listed for PKCE/OAuth callbacks.
 - Add the matching local URLs (`http://localhost:3000/auth/confirm` and `http://localhost:3000/auth/callback`) only when using local development.
