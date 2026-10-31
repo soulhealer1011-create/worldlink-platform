@@ -4,9 +4,9 @@
 
 In Supabase Dashboard → Authentication → URL Configuration:
 
-- Set Site URL to the production WORLDLINK origin: `https://worldlink-ujunwaedeh771-4486.vercel.app`.
-- Add `https://worldlink-ujunwaedeh771-4486.vercel.app/auth/confirm` to Redirect URLs.
-- Keep `https://worldlink-ujunwaedeh771-4486.vercel.app/auth/callback` allow-listed for PKCE/OAuth callbacks.
+- Set Site URL to the production WORLDLINK origin: `https://worldlink-platform.vercel.app`.
+- Add `https://worldlink-platform.vercel.app/auth/confirm` to Redirect URLs.
+- Keep `https://worldlink-platform.vercel.app/auth/callback` allow-listed for PKCE/OAuth callbacks.
 - Add the matching local URLs (`http://localhost:3000/auth/confirm` and `http://localhost:3000/auth/callback`) only when using local development.
 
 ## Magic Link email template — important
