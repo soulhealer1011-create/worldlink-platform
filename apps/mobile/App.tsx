@@ -69,11 +69,11 @@ export default function App() {
     supabase.from("countries").select("code,name").eq("is_enabled", true).order("name")
       .then(({ data, error }) => { if (!error && data?.length) setCountries(data as Country[]); });
     supabase.auth.getUser()
-      .then(({ data }) => setUserEmail(data.user?.email ?? null))
+      .then(({ data }) => setUserEmail(data.user?.email ?? data.user?.phone ?? null))
       .finally(() => setLoading(false));
     refreshListings();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserEmail(session?.user.email ?? null);
+      setUserEmail(session?.user.email ?? session?.user.phone ?? null);
     });
     return () => subscription.unsubscribe();
   }, []);
